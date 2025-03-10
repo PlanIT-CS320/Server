@@ -40,4 +40,3 @@ function connect()
 }
 
 connect();
-connection = mongoose.connection;
