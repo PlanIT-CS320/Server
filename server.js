@@ -1,8 +1,6 @@
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
-const Planet = require('./schema/Planet');
-const User = require('./schema/User');
 
 const app = express();
 const PORT = 3000;
@@ -24,8 +22,7 @@ app.use('/users', require('./users/routes'));
 //Router for /planets/...
 app.use('/planets', require('./planets/routes')); 
 
-const uri = 
-  "mongodb+srv://admin:adminpassword@planit-db.80npa.mongodb.net/?retryWrites=true&w=majority&appName=planit-db";
+const uri = process.env.MONGO_URL;
 
 function connect()
 {

@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest'
 import mongoose from 'mongoose'
 import request from 'supertest'
-import app from '../app' // Adjust path to your Express app
+import app from '../server' // Adjust path to your Express app
 
 describe('User API', () => {
     beforeAll(async () => {
-        await mongoose.connect(process.env.MONGODB_TEST_URI || 'mongodb://localhost:27017/test_db')
+        await mongoose.connect(process.env.MONGO_URL || 'mongodb://localhost:27017/test_db')
     })
 
     afterAll(async () => {
