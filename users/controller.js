@@ -2,7 +2,9 @@ const User = require('../schema/User');
 const Planet = require('../schema/Planet');
 const PlanetCollaborator = require('../schema/PlanetCollaborator');
 const PlanetInvite = require('../schema/PlanetInvite');
-const secret = 'your_jwt_secret'; 
+const secret = process.env.JWT_SECRET;
+
+if (!secret) throw new Error("JWT_SECRET environment variable not set.");
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const saltRounds = 10; //Salt hashed password 10 times
@@ -241,7 +243,7 @@ async function acceptInvite(req, res)
     }
 }
 
-//POST reqeuest on /users/invites/:inviteId/decline
+//POST request on /users/invites/:inviteId/decline
 //Deletes an invite given its id
 async function declineInvite(req, res)
 {

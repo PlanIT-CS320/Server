@@ -2,7 +2,9 @@
 
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
-const secret = 'your_jwt_secret'; 
+const secret = process.env.JWT_SECRET;
+
+if (!secret) throw new Error("JWT_SECRET environment variable not set.");
 
 const authenticateRole = (roles = []) => {
   return (req, res, next) => {
@@ -34,7 +36,7 @@ function authenticateJWT(req, res, next) {
 //Limit 1 request per 30ms
 const limiter = rateLimit({
   windowMs: 300, // 30ms
-  max: 1, // limit each IP to 1 request per windowMs
+  max: process.env.NODE_ENV === "test" ? Infinity : 1, // limit each IP to 1 request per windowMs
   handler: (req, res) => {
     console.log("Request blocked by rate limiter");
     return res.status(429).json({
