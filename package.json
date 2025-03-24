@@ -15,6 +15,7 @@
 		"@biomejs/biome": "1.9.4",
 		"@vitest/ui": "^3.0.6",
 		"nodemon": "^3.1.4",
+		"supertest": "^7.1.0",
 		"vitest": "^3.0.6"
 	},
 	"dependencies": {
@@ -26,7 +27,6 @@
 		"jsonwebtoken": "^9.0.2",
 		"mongoose": "^8.10.1",
 		"path-to-regexp": "^8.2.0",
-		"router": "^2.0.0",
-		"supertest": "^7.0.0"
+		"router": "^2.0.0"
 	}
 }
