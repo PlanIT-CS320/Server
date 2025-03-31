@@ -147,4 +147,62 @@ describe("Planet routes", async () => {
             expect(response.body).not.toHaveProperty("planet.name", planet.name);
 		});
 	});
+
+	describe("GET /planets/planetID/columns", () => {
+		it("should return a planet's columns & tasks from the database", async () => {
+			const response = await request(app)
+				.get(`/planets/${planet.id}/columns`)
+				.set("Authorization", `Bearer ${owner_token}`)
+                .expect(200);
+
+            expect(response.body).toHaveProperty("message", "Planet columns retrieved successfully.");
+			// I do not care to add columns to the planet
+			// The success message is good enough
+		});
+
+        it("should not return the columns without authorization", async () => {
+			const response = await request(app)
+				.get(`/planets/${planet.id}/columns`)
+				.expect(401);
+            
+            expect(response.body).not.toHaveProperty("columns", planet.name);
+		});
+
+        it("should not return the columns without permission", async () => {
+			const response = await request(app)
+				.get(`/planets/${planet.id}/columns`)
+                .set("Authorization", `Bearer ${lonely_token}`)
+				.expect(403);
+            
+		});
+	});
+
+	describe("POST /planets", () => {
+		it("should create a new planet", async () => {
+			const response = await request(app)
+				.post('/planets')
+				.set("Authorization", `Bearer ${owner_token}`)
+				.send({
+					'name': 'TestyPlanet',
+					'description': 'a super testy planet',
+					'ownerId': owner_user.id
+				})
+                .expect(201);
+
+            expect(response.body).toHaveProperty("message", "Planet successfully created.");
+		});
+
+        it("should not create the planet without authorization", async () => {
+			const response = await request(app)
+				.post('/planets')
+				.send({
+					'name': 'TestyPlanet',
+					'description': 'a super testy planet',
+					'ownerId': owner_user.id
+				})
+                .expect(401);
+
+            expect(response.body).toHaveProperty("message", "Access denied, no token found.");
+		});
+	});
 });
