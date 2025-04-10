@@ -281,12 +281,60 @@ describe("Planet routes", async () => {
         });
     });
 
+    describe("POST /planets/columns/:columnId/task", () => {
+        it("should create a new task", async () => {
+            console.log("planetColumn", planetColumn);
+            const response = await request(app)
+                .post(`/planets/columns/${planetColumn.id}/task`)
+                .set("Authorization", `Bearer ${owner_token}`)
+                .send({
+                    content: "Test task",
+                })
+                .expect(201);
+
+            expect(response.body).toHaveProperty("message");
+        });
+
+        it("should not create the task without authorization", async () => {
+            const response = await request(app)
+                .post(`/planets/columns/${planetColumn.id}/task`)
+                .send({
+                    content: "Test task",
+                })
+                .expect(401);
+
+            expect(response.body).toHaveProperty("message");
+        });
+
+        it("should not create the task without permission", async () => {
+            const response = await request(app)
+                .post(`/planets/columns/${planetColumn.id}/task`)
+                .set("Authorization", `Bearer ${lonely_token}`)
+                .send({
+                    content: "Test task",
+                })
+                .expect(403);
+
+            expect(response.body).toHaveProperty("message");
+        });
+
+        it("should not create the task without content", async () => {
+            const response = await request(app)
+                .post(`/planets/columns/${planetColumn.id}/task`)
+                .set("Authorization", `Bearer ${owner_token}`)
+                .send({})
+                .expect(400);
+
+            expect(response.body).toHaveProperty("message");
+        });
+    });
+
     describe("DELETE /planets/planetID", () => {
         it("should not delete the planet without authorization", async () => {
             const response = await request(app)
                 .delete(`/planets/${deletablePlanet.id}`)
                 .expect(401);
-
+            
             expect(response.body).toHaveProperty("message");
         });
 
@@ -297,14 +345,14 @@ describe("Planet routes", async () => {
                 .expect(403);
 
             expect(response.body).toHaveProperty("message");
-        });
 
+        });
         it("should delete the planet", async () => {
             const response = await request(app)
                 .delete(`/planets/${deletablePlanet.id}`)
                 .set("Authorization", `Bearer ${owner_token}`)
                 .expect(200);
-
+            
             expect(response.body).toHaveProperty("message");
         });
     });

@@ -232,13 +232,8 @@ async function createTask(req, res) {
             });
         }
 
-        process.stdout.write("Creating task with content: " + content + "\n");
-        process.stdout.write("Creating task with columnId: " + columnId + "\n");
-
         //Find column with given id
         const column = await PlanetColumn.findById(columnId);
-        console.log("column", column);
-        console.log("columnId", columnId);
         if (column) {
             //If user is a collaborator of planet that task is being created in
             const planetUserMatch = await PlanetCollaborator.exists({
