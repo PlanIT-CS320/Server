@@ -74,38 +74,44 @@ describe("Planet routes", async () => {
         { expiresIn: "15m" }
     );
 
-    let planet = new Planet({
+    const planet = new Planet({
         name: "pluto",
         description: "test planet description",
         ownerId: null,
     });
 
-    let deletablePlanet = new Planet({
+    const deletablePlanet = new Planet({
         name: "deleteme",
         description: "remove me from existence",
         ownerId: null,
     });
 
-    let planetOwner = new PlanetCollaborator({
+    const planetOwner = new PlanetCollaborator({
         role: "owner",
         planetId: null,
         userId: null,
     });
 
-    let planetUser = new PlanetCollaborator({
+    const planetUser = new PlanetCollaborator({
         role: "collaborator",
         planetId: null,
         userId: null,
     });
 
-    let deletablePlanetOwner = new PlanetCollaborator({
+    const deletablePlanetOwner = new PlanetCollaborator({
         role: "owner",
         planetId: null,
         userId: null,
     });
 
-    let planetColumn;
-    let deletablePlanetColumn;
+    const planetColumn  = new PlanetColumn({
+        planetId: null,
+        name: "Test Column",
+    });
+    const deletablePlanetColumn = new PlanetColumn({
+        planetId: null,
+        name: "Delete me",
+    });
 
     beforeAll(async () => {
         await mongoose.connect(process.env.MONGO_URL || "mongodb://localhost:27017/test_db");
@@ -131,18 +137,10 @@ describe("Planet routes", async () => {
         await deletablePlanetOwner.save();
         await planet.save();
         await deletablePlanet.save();
-
-        planetColumn = new PlanetColumn({
-            planetId: planet.id,
-            name: "Test Column",
-        });
-        deletablePlanetColumn = new PlanetColumn({
-            planetId: deletablePlanet.id,
-            name: "Delete me",
-        });
+        planetColumn.planetId = planet.id;
+        deletablePlanetColumn.planetId = planet.id; // We want this to belong to the planet that DOESN'T get deleted
         await planetColumn.save();
         await deletablePlanetColumn.save();
-        
     });
 
     afterAll(async () => {
@@ -150,7 +148,7 @@ describe("Planet routes", async () => {
         await mongoose.connection.close();
     });
 
-    describe("GET /planets/planetID", () => {
+    describe("GET /planets/:planetID", () => {
         it("should return the planet's data from the database", async () => {
             const response = await request(app)
                 .get(`/planets/${planet.id}`)
@@ -176,7 +174,7 @@ describe("Planet routes", async () => {
         });
     });
 
-    describe("GET /planets/planetID/columns", () => {
+    describe("GET /planets/:planetID/columns", () => {
         it("should return a planet's columns & tasks from the database", async () => {
             const response = await request(app)
                 .get(`/planets/${planet.id}/columns`)
@@ -329,7 +327,7 @@ describe("Planet routes", async () => {
         });
     });
 
-    describe("DELETE /planets/planetID", () => {
+    describe("DELETE /planets/:planetID", () => {
         it("should not delete the planet without authorization", async () => {
             const response = await request(app)
                 .delete(`/planets/${deletablePlanet.id}`)
@@ -354,6 +352,67 @@ describe("Planet routes", async () => {
                 .expect(200);
             
             expect(response.body).toHaveProperty("message");
+        });
+    });
+
+    describe("DELETE /planets/tasks/:taskID", () => {
+        it("should not delete the task without authorization", async () => {
+            const response = await request(app)
+                .post(`/planets/columns/${planetColumn.id}/task`)
+                .set("Authorization", `Bearer ${owner_token}`)
+                .send({
+                    content: "Del me task",
+                })
+                .expect(201)
+            const tempTaskID = response.body.newTask._id;
+            const del_response = await request(app)
+                .delete(`/planets/tasks/${tempTaskID}`)
+                .expect(401);
+            expect(del_response.body).toHaveProperty("message");
+
+            //Cleanup
+            await request(app)
+                .delete(`/planets/tasks/${tempTaskID}`)
+                .set("Authorization", `Bearer ${owner_token}`)
+                .expect(200)
+        });
+
+        it("should not delete the task without permission", async () => {
+            const response = await request(app)
+                .post(`/planets/columns/${planetColumn.id}/task`)
+                .set("Authorization", `Bearer ${owner_token}`)
+                .send({
+                    content: "Del me task",
+                })
+                .expect(201)
+            const tempTaskID = response.body.newTask._id;
+            const del_response = await request(app)
+                .delete(`/planets/tasks/${tempTaskID}`)
+                .set("Authorization", `Bearer ${lonely_token}`)
+                .expect(403);
+            expect(del_response.body).toHaveProperty("message");
+
+            //Cleanup
+            await request(app)
+                .delete(`/planets/tasks/${tempTaskID}`)
+                .set("Authorization", `Bearer ${owner_token}`)
+                .expect(200)
+        });
+
+        it("should delete a task", async () => {
+            const response = await request(app)
+                .post(`/planets/columns/${planetColumn.id}/task`)
+                .set("Authorization", `Bearer ${owner_token}`)
+                .send({
+                    content: "Del me task",
+                })
+                .expect(201)
+            const tempTaskID = response.body.newTask._id;
+            const del_response = await request(app)
+                .delete(`/planets/tasks/${tempTaskID}`)
+                .set("Authorization", `Bearer ${owner_token}`)
+                .expect(200)
+            expect(del_response.body).toHaveProperty("message");
         });
     });
 });
