@@ -256,4 +256,52 @@ describe("Planet routes", async () => {
             expect(response.body).toHaveProperty("message");
         });
     });
+
+    describe("POST /planets/columns/:columnId/task", () => {
+        it("should create a new task", async () => {
+            console.log("planetColumn", planetColumn);
+            const response = await request(app)
+                .post(`/planets/columns/${planetColumn.id}/task`)
+                .set("Authorization", `Bearer ${owner_token}`)
+                .send({
+                    content: "Test task",
+                })
+                .expect(201);
+
+            expect(response.body).toHaveProperty("message");
+        });
+
+        it("should not create the task without authorization", async () => {
+            const response = await request(app)
+                .post(`/planets/columns/${planetColumn.id}/task`)
+                .send({
+                    content: "Test task",
+                })
+                .expect(401);
+
+            expect(response.body).toHaveProperty("message");
+        });
+
+        it("should not create the task without permission", async () => {
+            const response = await request(app)
+                .post(`/planets/columns/${planetColumn.id}/task`)
+                .set("Authorization", `Bearer ${lonely_token}`)
+                .send({
+                    content: "Test task",
+                })
+                .expect(403);
+
+            expect(response.body).toHaveProperty("message");
+        });
+
+        it("should not create the task without content", async () => {
+            const response = await request(app)
+                .post(`/planets/columns/${planetColumn.id}/task`)
+                .set("Authorization", `Bearer ${owner_token}`)
+                .send({})
+                .expect(400);
+
+            expect(response.body).toHaveProperty("message");
+        });
+    });
 });
