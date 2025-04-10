@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+// biome-ignore lint/complexity/noForEach: its not that serious lil bro
 Object.keys(mongoose.connection.models).forEach(key => delete mongoose.connection.models[key]);
 
 import { genSalt, hash } from "bcrypt";
@@ -40,11 +41,7 @@ describe("Planet routes", async () => {
         password: await hash("lonelypassword", await genSalt(10)),
     });
 
-    let owner_token;
-    let reg_token;
-    let lonely_token;
-
-    owner_token = jwt.sign(
+    const owner_token = jwt.sign(
         {
             userId: owner_user._id,
             userEmail: owner_user.email,
@@ -54,7 +51,7 @@ describe("Planet routes", async () => {
         { expiresIn: "15m" }
     );
 
-    reg_token = jwt.sign(
+    const reg_token = jwt.sign(
         {
             userId: reg_user._id,
             userEmail: reg_user.email,
@@ -64,7 +61,7 @@ describe("Planet routes", async () => {
         { expiresIn: "15m" }
     );
 
-    lonely_token = jwt.sign(
+    const lonely_token = jwt.sign(
         {
             userId: lonely_user._id,
             userEmail: lonely_user.email,
