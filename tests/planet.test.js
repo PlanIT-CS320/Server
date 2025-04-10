@@ -80,6 +80,12 @@ describe("Planet routes", async () => {
         ownerId: null,
     });
 
+    let deletablePlanet = new Planet({
+        name: "deleteme",
+        description: "remove me from existence",
+        ownerId: null,
+    });
+
     let planetOwner = new PlanetCollaborator({
         role: "owner",
         planetId: null,
@@ -92,7 +98,14 @@ describe("Planet routes", async () => {
         userId: null,
     });
 
+    let deletablePlanetOwner = new PlanetCollaborator({
+        role: "owner",
+        planetId: null,
+        userId: null,
+    });
+
     let planetColumn;
+    let deletablePlanetColumn;
 
     beforeAll(async () => {
         await mongoose.connect(process.env.MONGO_URL || "mongodb://localhost:27017/test_db");
@@ -103,22 +116,33 @@ describe("Planet routes", async () => {
         // thanks copilot for that comment^
         await owner_user.save();
         await reg_user.save();
+        await lonely_user.save();
         // save the planet
         planet.ownerId = owner_user.id;
+        deletablePlanet.ownerId = owner_user.id;
         planetOwner.userId = owner_user.id;
         planetOwner.planetId = planet.id;
         planetUser.userId = reg_user.id;
         planetUser.planetId = planet.id;
+        deletablePlanetOwner.userId = owner_user.id;
+        deletablePlanetOwner.planetId = deletablePlanet.id;
         await planetOwner.save();
         await planetUser.save();
+        await deletablePlanetOwner.save();
         await planet.save();
+        await deletablePlanet.save();
 
         planetColumn = new PlanetColumn({
             planetId: planet.id,
             name: "Test Column",
         });
-
+        deletablePlanetColumn = new PlanetColumn({
+            planetId: deletablePlanet.id,
+            name: "Delete me",
+        });
         await planetColumn.save();
+        await deletablePlanetColumn.save();
+        
     });
 
     afterAll(async () => {
@@ -252,6 +276,34 @@ describe("Planet routes", async () => {
                 .set("Authorization", `Bearer ${owner_token}`)
                 .send({})
                 .expect(400);
+
+            expect(response.body).toHaveProperty("message");
+        });
+    });
+
+    describe("DELETE /planets/planetID", () => {
+        it("should not delete the planet without authorization", async () => {
+            const response = await request(app)
+                .delete(`/planets/${deletablePlanet.id}`)
+                .expect(401);
+
+            expect(response.body).toHaveProperty("message");
+        });
+
+        it("should not delete the planet without permission", async () => {
+            const response = await request(app)
+                .delete(`/planets/${deletablePlanet.id}`)
+                .set("Authorization", `Bearer ${reg_token}`)
+                .expect(403);
+
+            expect(response.body).toHaveProperty("message");
+        });
+
+        it("should delete the planet", async () => {
+            const response = await request(app)
+                .delete(`/planets/${deletablePlanet.id}`)
+                .set("Authorization", `Bearer ${owner_token}`)
+                .expect(200);
 
             expect(response.body).toHaveProperty("message");
         });
