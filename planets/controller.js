@@ -829,7 +829,7 @@ async function deleteTask(req, res) {
                 //If id of token is a member of planet which task belongs to
                 const planetUserMatch = await PlanetCollaborator.exists({
                     planetId: column.planetId,
-                    userId: req.user.userId
+                    userId: req.user.userId,
                 });
                 if (planetUserMatch) {
                     await task.deleteOne({ _id: taskId });
@@ -890,7 +890,7 @@ async function removeUser(req, res) {
                         //Remove user
                         await PlanetCollaborator.deleteOne({ planetId, userId });
 
-                        return res.status(204);
+                        return res.sendStatus(204);
                     }
                     //Id of token is not owner of planet
                     return res.status(403).json({

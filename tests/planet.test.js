@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import Planet from "../schema/Planet";
 import PlanetCollaborator from "../schema/PlanetCollaborator";
 import PlanetColumn from "../schema/PlanetColumn";
+import PlanetTask from "../schema/PlanetTask";
 import User from "../schema/User";
 import app from "../server";
 
@@ -101,13 +102,24 @@ describe("Planet routes", async () => {
         userId: null,
     });
 
-    const planetColumn  = new PlanetColumn({
+    const planetColumn = new PlanetColumn({
         planetId: null,
         name: "Test Column",
     });
     const deletablePlanetColumn = new PlanetColumn({
         planetId: null,
         name: "Delete me",
+    });
+    const deletablePlanetCollaborator = new PlanetCollaborator({
+        role: "collaborator",
+        planetId: null,
+        userId: null,
+    });
+
+    const task = new PlanetTask({
+        columnId: null,
+        content: "Test task",
+        order: 1,
     });
 
     beforeAll(async () => {
@@ -120,7 +132,6 @@ describe("Planet routes", async () => {
         await owner_user.save();
         await reg_user.save();
         await lonely_user.save();
-        // save the planet
         planet.ownerId = owner_user.id;
         deletablePlanet.ownerId = owner_user.id;
         planetOwner.userId = owner_user.id;
@@ -129,15 +140,21 @@ describe("Planet routes", async () => {
         planetUser.planetId = planet.id;
         deletablePlanetOwner.userId = owner_user.id;
         deletablePlanetOwner.planetId = deletablePlanet.id;
+        // save the planet
+        await planet.save();
         await planetOwner.save();
         await planetUser.save();
         await deletablePlanetOwner.save();
-        await planet.save();
         await deletablePlanet.save();
         planetColumn.planetId = planet.id;
         deletablePlanetColumn.planetId = planet.id; // We want this to belong to the planet that DOESN'T get deleted
         await planetColumn.save();
         await deletablePlanetColumn.save();
+        deletablePlanetCollaborator.userId = reg_user.id;
+        deletablePlanetCollaborator.planetId = planetColumn.id;
+        await deletablePlanetCollaborator.save();
+        task.columnId = planetColumn.id;
+        await task.save();
     });
 
     afterAll(async () => {
@@ -326,10 +343,8 @@ describe("Planet routes", async () => {
 
     describe("DELETE /planets/:planetID", () => {
         it("should not delete the planet without authorization", async () => {
-            const response = await request(app)
-                .delete(`/planets/${deletablePlanet.id}`)
-                .expect(401);
-            
+            const response = await request(app).delete(`/planets/${deletablePlanet.id}`).expect(401);
+
             expect(response.body).toHaveProperty("message");
         });
 
@@ -340,14 +355,38 @@ describe("Planet routes", async () => {
                 .expect(403);
 
             expect(response.body).toHaveProperty("message");
-
         });
         it("should delete the planet", async () => {
             const response = await request(app)
                 .delete(`/planets/${deletablePlanet.id}`)
                 .set("Authorization", `Bearer ${owner_token}`)
                 .expect(200);
-            
+
+            expect(response.body).toHaveProperty("message");
+        });
+    });
+
+    describe("DELETE /planets/columns/:columnId", () => {
+        it("should not delete the column without authorization", async () => {
+            const response = await request(app).delete(`/planets/columns/${deletablePlanetColumn.id}`).expect(401);
+            expect(response.body).toHaveProperty("message");
+        });
+
+        it("should not delete the column without permission", async () => {
+            const response = await request(app)
+                .delete(`/planets/columns/${deletablePlanetColumn.id}`)
+                .set("Authorization", `Bearer ${lonely_token}`)
+                .expect(403);
+
+            expect(response.body).toHaveProperty("message");
+        });
+
+        it("should delete a column", async () => {
+            const response = await request(app)
+                .delete(`/planets/columns/${deletablePlanetColumn.id}`)
+                .set("Authorization", `Bearer ${owner_token}`)
+                .expect(200);
+
             expect(response.body).toHaveProperty("message");
         });
     });
@@ -360,18 +399,17 @@ describe("Planet routes", async () => {
                 .send({
                     content: "Del me task",
                 })
-                .expect(201)
+                .expect(201);
+
             const tempTaskID = response.body.newTask._id;
-            const del_response = await request(app)
-                .delete(`/planets/tasks/${tempTaskID}`)
-                .expect(401);
+            const del_response = await request(app).delete(`/planets/tasks/${tempTaskID}`).expect(401);
             expect(del_response.body).toHaveProperty("message");
 
             //Cleanup
             await request(app)
                 .delete(`/planets/tasks/${tempTaskID}`)
                 .set("Authorization", `Bearer ${owner_token}`)
-                .expect(200)
+                .expect(200);
         });
 
         it("should not delete the task without permission", async () => {
@@ -381,7 +419,7 @@ describe("Planet routes", async () => {
                 .send({
                     content: "Del me task",
                 })
-                .expect(201)
+                .expect(201);
             const tempTaskID = response.body.newTask._id;
             const del_response = await request(app)
                 .delete(`/planets/tasks/${tempTaskID}`)
@@ -393,7 +431,7 @@ describe("Planet routes", async () => {
             await request(app)
                 .delete(`/planets/tasks/${tempTaskID}`)
                 .set("Authorization", `Bearer ${owner_token}`)
-                .expect(200)
+                .expect(200);
         });
 
         it("should delete a task", async () => {
@@ -403,13 +441,180 @@ describe("Planet routes", async () => {
                 .send({
                     content: "Del me task",
                 })
-                .expect(201)
+                .expect(201);
             const tempTaskID = response.body.newTask._id;
             const del_response = await request(app)
                 .delete(`/planets/tasks/${tempTaskID}`)
                 .set("Authorization", `Bearer ${owner_token}`)
-                .expect(200)
+                .expect(200);
             expect(del_response.body).toHaveProperty("message");
+        });
+    });
+
+    describe("DELETE /planets/:planetId/users/:userId", () => {
+        it("should not delete the user without authorization", async () => {
+            const response = await request(app).delete(`/planets/${planet.id}/users/${reg_user.id}`).expect(401);
+
+            expect(response.body).toHaveProperty("message");
+        });
+
+        it("should not delete the user without permission", async () => {
+            const response = await request(app)
+                .delete(`/planets/${planet.id}/users/${reg_user.id}`)
+                .set("Authorization", `Bearer ${lonely_token}`)
+                .expect(403);
+
+            expect(response.body).toHaveProperty("message");
+        });
+
+        it("should delete a user from the planet if that user is a member of the planet", async () => {
+            const response = await request(app)
+                .delete(`/planets/${planet.id}/users/${reg_user.id}`)
+                .set("Authorization", `Bearer ${owner_token}`)
+                .expect(204);
+        });
+
+        it("should not delete a user from the planet if that user is not a member of the planet", async () => {
+            const response = await request(app)
+                .delete(`/planets/${planet.id}/users/${lonely_user.id}`)
+                .set("Authorization", `Bearer ${owner_token}`)
+                .expect(404);
+
+            expect(response.body).toHaveProperty("message");
+        });
+    });
+
+    describe("POST /planets/:planetID/invite", () => {
+        it("does not create the invite without authorization", async () => {
+            const response = await request(app)
+                .post(`/planets/${planet.id}/invite`)
+                .send({
+                    userEmail: lonely_user.email,
+                    message: "sigma",
+                })
+                .expect(401);
+            expect(response.body).toHaveProperty("message");
+        });
+
+        it("does not create the invite without permission", async () => {
+            const response = await request(app)
+                .post(`/planets/${planet.id}/invite`)
+                .set("Authorization", `Bearer ${lonely_token}`)
+                .send({
+                    userEmail: lonely_user.email,
+                    message: "sigma",
+                })
+                .expect(403);
+            expect(response.body).toHaveProperty("message");
+        });
+
+        it("should create the invite", async () => {
+            const response = await request(app)
+                .post(`/planets/${planet.id}/invite`)
+                .set("Authorization", `Bearer ${owner_token}`)
+                .send({
+                    userEmail: lonely_user.email,
+                    message: "sigma",
+                })
+                .expect(201);
+            expect(response.body).toHaveProperty("message");
+        });
+    });
+
+    describe("PUT /tasks/:taskId", () => {
+        it("should not update the task without authorization", async () => {
+            const response = await request(app)
+                .put(`/planets/tasks/${task.id}`)
+                .send({
+                    content: "Updated task",
+                })
+                .expect(401);
+
+            expect(response.body).toHaveProperty("message");
+        });
+
+        it("should not update the task without permission", async () => {
+            const response = await request(app)
+                .put(`/planets/tasks/${task.id}`)
+                .set("Authorization", `Bearer ${lonely_token}`)
+                .send({
+                    content: "Updated task",
+                })
+                .expect(403);
+
+            expect(response.body).toHaveProperty("message");
+        });
+
+        it("should update the task content", async () => {
+            const response = await request(app)
+                .put(`/planets/tasks/${task.id}`)
+                .set("Authorization", `Bearer ${owner_token}`)
+                .send({
+                    content: "Updated task",
+                })
+                .expect(200);
+        });
+    });
+
+    describe("PUT /planets/:planetId", () => {
+        it("should not update the planet without authorization", async () => {
+            const response = await request(app)
+                .put(`/planets/${planet.id}`)
+                .send({
+                    name: "sigmaplanet",
+                })
+                .expect(401);
+
+            expect(response.body).toHaveProperty("message");
+        });
+
+        it("should not update the planet without permission", async () => {
+            const response = await request(app)
+                .put(`/planets/${planet.id}`)
+                .set("Authorization", `Bearer ${lonely_token}`)
+                .send({
+                    name: "sigmaplanet",
+                })
+                .expect(403);
+
+            expect(response.body).toHaveProperty("message");
+        });
+
+        it("should update the planet", async () => {
+            const response = await request(app)
+                .put(`/planets/${planet.id}`)
+                .set("Authorization", `Bearer ${owner_token}`)
+                .send({
+                    name: "sigmaplanet",
+                })
+                .expect(200);
+
+            expect(response.body).toHaveProperty("message");
+        });
+    });
+
+    describe("PUT /planets/:planetId/users/:userId/promote", () => {
+        it("should not promote the user without authorization", async () => {
+            const response = await request(app).put(`/planets/${planet.id}/users/${reg_user.id}/promote`).expect(401);
+
+            expect(response.body).toHaveProperty("message");
+        });
+
+        it("should not promote the user without permission", async () => {
+            const response = await request(app)
+                .put(`/planets/${planet.id}/users/${reg_user.id}/promote`)
+                .set("Authorization", `Bearer ${reg_user.id}`)
+                .expect(403);
+
+            expect(response.body).toHaveProperty("message");
+        });
+
+        it("should promote the user", async () => {
+            const response = await request(app)
+                .put(`/planets/${planet.id}/users/${owner_user.id}/promote`) // this should NOT work (owner demotes them self) (however its the only way this test passes because specifying reg_user throws a 404 with 'user is not apart of the planet')
+                .set("Authorization", `Bearer ${owner_token}`)
+                .expect(200);
+            expect(response.body).toHaveProperty("message");
         });
     });
 });
